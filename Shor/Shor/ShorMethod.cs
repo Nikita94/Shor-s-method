@@ -25,12 +25,13 @@ namespace Shor
         private List<double> prevr;
         private List<double> BBT;
         private List<double> d;
+        private double h;
         private int iteration;
 
 
         public ShorMethod(double epcilon, List <double>x, int N, double alfa) {
             Random ran = new Random();
-            double h = ran.NextDouble();
+            h = ran.NextDouble();
             this.N = N;
             this.epcilon = epcilon;
             this.x = x;
@@ -44,14 +45,15 @@ namespace Shor
             d = new List<double>(N);
             prevr = new List<double>(N);
             ksi = new List<double>(N);
-            mu = 0.0001; eta = 0.00015; sigma = 0.0001;
+            mu = 0.0001; eta = 0.0005; sigma = 0.0001;
             iteration = 1;
 
         }
 
-        public List<Double> SearchMin() {
+        public double SearchMin() {
             // Step 1
             double f0 = f.getSum(x);
+            double preNorm = Double.MaxValue; ;
             r = fg.getGrad(x);
             for (int i = 0; i < N; i++)
                 for (int j = 0; j < N; j++)
@@ -64,59 +66,83 @@ namespace Shor
             // MAIN ITERATIONS
             while (true)
             {
-                iteration += 1;
                 // Step 2
                 prevB = new List<double>(B);
-                BBT = multMatrix(prevB, prevB, false);
+                BBT = multMatrix(prevB, prevB, true);
                 double[] newR = new double[N];
                 newR = r.ToArray();
                 prevr = new List<double>(newR);
 
-                for (int i = 0; i < N; i++) {
+                for (int i = 0; i < N; i++)
+                {
                     double comp = 0.0;
-                    for (int j = 0; j < N; j++) {
-                        comp -= BBT[j + i * N] * prevr[j];
+                    for (int j = 0; j < N; j++)
+                    {
+                        comp += BBT[j + i * N] * prevr[j];
                     }
                     d.Add(comp);
                 }
 
-                double xk = oneDimensionalOptimization(x, d, fg.getGrad(x), f.getSum(x));
-                for (int i = 0; i < N; i++) {
-                    x[i] = x[i] + xk * d[i];
-                }
+                double xk = 0.05;
+                // Step 3
 
-                r = fg.getGrad(x);
-                    // Step 3
-                    if (normVec(r) < epcilon || iteration > 200)
+                if (normVec(r) > 0.04 && normVec(r) <= preNorm)
                 {
+                    preNorm = normVec(r);
                     // Step 4
-                    for (int i = 0; i < N; i++) {
+                    for (int i = 0; i < N; i++)
+                    {
                         prevr[i] = r[i] - prevr[i];
                     }
 
-                    for (int i = 0; i < N; i++) {
+                    for (int i = 0; i < N; i++)
+                    {
                         double compKsi = 0.0;
-                        for (int j = 0; j < N; j++) {
+                        for (int j = 0; j < N; j++)
+                        {
                             compKsi += B[i + N * j] * prevr[j];
                         }
 
                         ksi.Add(compKsi);
                     }
+
+                    double normKsi = normVec(ksi);
+                    for (int i = 0; i < N; i++)
+                        ksi[i] = ksi[i] / normKsi;
                     // End step 4  
 
                     // Step 5
-                    double[] newB = new double[N * N];
-                    newB = B.ToArray();
-                    prevB = new List<double>(newB);
+                    prevB = new List<double>(B);
 
                     R = calculateMultMatrix(ksi);
-                    B = multMatrix(prevB, R, true);
+                    B = multMatrix(prevB, R, false);
+                    double normB = normVec(B);
+                    for (int i = 0; i < B.Count; i++)
+                        B[i] = B[i] / normB;
+
+
+                    double x1 = x[0], x2 = x[1];
+                    Console.WriteLine("r = " + normVec(r) + " x1 = " + x1 + " x2 = " + x2);
+                    iteration += 1;
+                   xk = oneDimensionalOptimization(x, d, fg.getGrad(x), f.getSum(x));
+                    for (int i = 0; i < N; i++)
+                    {
+                        x[i] = x[i] - xk * d[i];
+                    }
+
+                    r = fg.getGrad(x);
                 }
-                else 
+                else
+                {
+                    foreach (double xx in x)
+                        Console.WriteLine("x = " + xx);
+                    Console.WriteLine("r = " + normVec(r) + " h = " + h);
                     break;
 
+                }
+
             }
-            return x;
+            return f.getSum(x);
         }
 
 
@@ -135,26 +161,28 @@ namespace Shor
             for (int i = 0; i < N; i++)
                 for (int j = 0; j < N; j++) {
                     if (i == j)
-                        R.Add(1 + (1 / alfa) * ksi[i] * ksi[j]);
+                        R.Add(1 + (1 / alfa - 1) * ksi[i] * ksi[j]);
+                    else
+                        R.Add(0 + (1 / alfa - 1) * ksi[i] * ksi[j]);
                 }
             return R;
         }
 
         private List<double> multMatrix(List<double> aMatrix, List<double> bMatrix, bool transposed) {
-            List<Double> cMatrix = new List<double>(N * N);
+            List<Double> cMatrix = new List<double>(N*N);
             for (int l = 0; l < N; l++)
             {
-                double tmp = 0.0;
                 for (int i = 0; i < N; i++)
                 {
+                    cMatrix.Add(0);
                     for (int j = 0; j < N; j++)
                     {
                         if (transposed)
-                            tmp += aMatrix[j + i * N] * bMatrix[j * N + i];
+                            cMatrix[l * N + i] += aMatrix[l * N + j] * bMatrix[i * N + j];
                         else
-                            tmp += aMatrix[j + i * N] * bMatrix[i * N + j];
+                            cMatrix[l * N + i] += aMatrix[l * N + j] * bMatrix[j * N + i];
+
                     }
-                    cMatrix.Add(tmp);
                 }
             }
 
@@ -212,7 +240,7 @@ namespace Shor
             double newPhi = f.getSum(newValue);
             double scalPr = scalarProduct(fg.getGrad(newValue), d);
             while (newPhi < phi && scalPr < 0) {
-                if (!P1(newValue, d, fg.getGrad(newValue), f.getSum(newValue), t1))
+               if (!P1(newValue, d, fg.getGrad(newValue), f.getSum(newValue), t1))
                     break;
 
                 ourSigma = 2 * ourSigma;
@@ -229,6 +257,8 @@ namespace Shor
                 newPhi = f.getSum(newValue);
                 scalPr = scalarProduct(fg.getGrad(newValue), d);
             }
+
+           // Console.WriteLine("t" + t1);
             return t1;
         }
 
@@ -260,14 +290,16 @@ namespace Shor
                 t = (a + b) / 2.0;
 		        p1 = P1(x, d, gradient, value, t);
                 p2 = P2(x, d, gradient, t);
-                Console.WriteLine("Rosenbrok");
-            } while((!p1 || !p2));	
-	        return t;
+            } while((p1 && p2));
+            //Console.WriteLine("Ass");
+            return t;
         }
 
         private double oneDimensionalOptimization(List<double> x, List<double> d, List<double> gradient, double value) {
             double t = selectionOfInterval(x, d);
-            return goldenSection(0, t, x, d, gradient, value);
+            double xk = goldenSection(0, t, x, d, gradient, value);
+            Console.WriteLine("xk = " + xk);
+            return xk;
         }
     }
 }

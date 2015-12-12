@@ -24,7 +24,7 @@ namespace Shor
             double f = 0.0;
             for (int i = 0; i < x.Count - 1; i++)
             {
-                f += Math.Pow(1 - x[i], 2) + 100 * ksi * Math.Pow(x[i + 1] - x[i] * x[i], 2);
+                f += Math.Pow((1 - x[i]), 2) + 100 * ksi * Math.Pow((x[i + 1] - x[i] * x[i]), 2);
             }
             return f;
         }
