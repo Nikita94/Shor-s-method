@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Shor
+namespace PerfomanceTests
 {
     class ShorMethod
     {
@@ -38,12 +38,13 @@ namespace Shor
         private double epsnorm = Math.Pow(10, -10);
         private double f0;
         private double dd;
-        private List <List <double>> midlineX;
+        private List<List<double>> midlineX;
         private List<double> tmpX;
-        public double countIter;
+        public int countIter;
 
 
-        public ShorMethod(double epcilon, List <double>x, int N, double alfa, List<double> ksi, int iterations) {
+        public ShorMethod(double epcilon, List<double> x, int N, double alfa, List<double> ksi, int iterations)
+        {
             this.iteration = iterations;
             this.N = N;
             this.epcilon = epcilon;
@@ -53,9 +54,8 @@ namespace Shor
             fg = new RosenbrockGrad(N, ksi);
             if (alfa == 0)
                 return;
-            B = new List<double>(N*N);
+            B = new List<double>(N * N);
             g = new List<double>(N);
-            g1 = new List<double>(N);
             prevr = new List<double>(N);
             mu = 0.0001; eta = 0.0005; sigma = 0.0001;
             w = (1 / alfa - 1);
@@ -63,12 +63,16 @@ namespace Shor
         }
 
 
-        public List<List<double>> SearchMin()
+        public ReturnData SearchMin()
         {
+            ReturnData results = new ReturnData(N);
             // Шаг 1
             f0 = f.getSum(x);
-            g = fg.getGrad(x);  
-            g1 = fg.getGrad(x);
+            results.F += 1;
+            g = fg.getGrad(x);
+            results.F += N+1;
+            g1 = new List<double>(g);
+            results.F +=  N + 1;
             for (int i = 0; i < N; i++)  // B0 = E
                 for (int j = 0; j < N; j++)
                 {
@@ -90,7 +94,7 @@ namespace Shor
             tmpX = new List<double>(x);
             midlineX.Add(tmpX);
 
-            while (normVec(fg.getGrad(x)) > epcilon && countIter <= iteration) 
+            while (normVec(g) > epcilon && countIter <= iteration)
             {
                 double d = 0.0;
                 dd = 0.0;
@@ -110,7 +114,7 @@ namespace Shor
                     for (int j = 0; j < N; j++)
                         d += B[j + i * N] * g[j];
                     gt[i] = d;
-                   // dd += d * g1[i];
+                    // dd += d * g1[i];
                     ngt += d * d;
                     ng1 += g1[i] * g1[i];
                 }
@@ -119,12 +123,11 @@ namespace Shor
                 ng1 = Math.Sqrt(ng1);
                 // dd /= ngt * ng1;
                 // 
-                for (int i = 0; i < N; i++) {
+                for (int i = 0; i < N; i++)
+                {
                     ksi.Add(gt[i] - g1[i]);
                 }
                 double nrmksi = normVec(ksi);
-
-               // Console.WriteLine(nrmksi);
                 if (countIter > 0)
                 {
                     for (int i = 0; i < N; i++)
@@ -148,7 +151,7 @@ namespace Shor
                     }
                     ng1 = Math.Sqrt(ng1);
                 }
-                
+
                 for (int i = 0; i < N; i++)
                     gt[i] = g1[i] / ng1;
                 /* Градиент в нетрансформированом пространстве: g0 = B' * gt   */
@@ -160,72 +163,44 @@ namespace Shor
                         d += prevB[j * N + i] * gt[j];
                     g0[i] = d;
                 }
-                
 
-                adaptiveAdjustmentOfStep();
+
+                adaptiveAdjustmentOfStep(results);
                 g = fg.getGrad(x);
+
+                results.F +=  N + 1;
                 countIter += 1;
-                tmpX = new List<double>(x);
-                midlineX.Add(tmpX);
 
             }
-            
-            return midlineX;
+            results.K = countIter;
+            results.min = x.ToArray();
+            return results;
         }
+
+        public double normVec(List<double> vector)
+        {
+            double norma = 0.0;
+
+            foreach (double comp in vector)
+                norma += comp * comp;
+
+            return Math.Sqrt(norma);
+
+        }
+
         
-         private double normVec(List<double> vector) {
-             double norma = 0.0;
+        
 
-             foreach (double comp in vector)
-                 norma += comp * comp;
+        private double scalarProduct(List<double> aVector, List<double> bVector)
+        {
+            double product = 0.0;
+            for (int i = 0; i < N; i++)
+                product += aVector[i] + bVector[i];
 
-             return Math.Sqrt(norma);
+            return product;
+        }
 
-         }
-
-         private List<double> calculateMultMatrix(List<double> ksi) {
-             List<double> R = new List<double>(N * N);
-             for (int i = 0; i < N; i++)
-                 for (int j = 0; j < N; j++) {
-                      if (i == j)
-                          R.Add(1 + (1 / alfa - 1) * ksi[i] * ksi[j]);
-                      else
-                          R.Add(0 + (1 / alfa - 1) * ksi[i] * ksi[j]); 
-                 }
-              return R;
-         }
-
-         private List<double> multMatrix(List<double> aMatrix, List<double> bMatrix, bool transposed) {
-             List<Double> cMatrix = new List<double>(N*N);
-             for (int l = 0; l < N; l++)
-             {
-                 for (int i = 0; i < N; i++)
-                 {
-                     cMatrix.Add(0);
-                     for (int j = 0; j < N; j++)
-                     {
-                         if (transposed)
-                             cMatrix[l * N + i] += aMatrix[l * N + j] * bMatrix[i * N + j];
-                         else
-                             cMatrix[l * N + i] += aMatrix[l * N + j] * bMatrix[j * N + i];
-
-                     }
-                 }
-             }
-
-             return cMatrix;
-
-         }
-
-         private double scalarProduct(List<double> aVector, List<double> bVector) {
-             double product = 0.0;
-             for (int i = 0; i < N; i++)
-                 product += aVector[i] + bVector[i];
-
-             return product;
-         }
-
-        private void adaptiveAdjustmentOfStep()
+        private void adaptiveAdjustmentOfStep(ReturnData results)
         {
             for (int i = 0; i < N; i++)
                 x1.Add(x[i]);
@@ -238,14 +213,13 @@ namespace Shor
 
             while (true)
             {
-                //Console.WriteLine("Ok");
                 for (int i = 0; i < N; i++)
                     x1[i] = x[i];
                 double f1 = f0;
 
                 if (f1 < 0.0) dd = -1.0;
-                else 
-                 dd = 1.0;
+                else
+                    dd = 1.0;
 
                 /* Следующе испытание:   */
                 for (int i = 0; i < N; i++)
@@ -260,6 +234,7 @@ namespace Shor
                 /* Функция в текущее точке:  */
 
                 f0 = f.getSum(x);
+                results.F +=  1;
                 if (ii == N)
                 {
                     stepvanish += 1;
@@ -297,7 +272,7 @@ namespace Shor
                     if (k2 > 0) kc += 1;
                     k2 = 0;
                     if (k1 >= 20) hp *= du20;
-                    else 
+                    else
                     if (k1 >= 10) hp *= du10;
                     else if (k1 >= 3) hp *= du03;
                 }

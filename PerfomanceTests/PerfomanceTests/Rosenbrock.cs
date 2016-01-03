@@ -5,14 +5,14 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Collections;
 
-namespace Shor
+namespace PerfomanceTests
 {
-    class Rosenbrock 
+    class Rosenbrock
     {
         private int N;
         private List<double> ksi;
 
-        
+
 
         public Rosenbrock(int N, List<double> ksi)
         {
@@ -20,7 +20,8 @@ namespace Shor
             this.ksi = ksi;
         }
 
-        public double getSum(List<double> x) {
+        public double getSum(List<double> x)
+        {
             double f = 0.0;
             for (int i = 0; i < x.Count - 1; i++)
             {

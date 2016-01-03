@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Collections;
 
-namespace Shor
+namespace PerfomanceTests
 {
     static class Program
     {
@@ -16,11 +15,11 @@ namespace Shor
         static void Main()
         {
             
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form1());
-            
-    
+               Application.EnableVisualStyles();
+               Application.SetCompatibleTextRenderingDefault(false);
+               Application.Run(new Form1());
+
+       
         }
     }
 }
